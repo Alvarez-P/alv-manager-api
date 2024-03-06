@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { CreateUserInputDto } from '../domain/dto/create-user-input.dto'
 import { UpdateUserInputDto } from '../domain/dto/update-user-input.dto'
-import { USER_PROVIDER_TOKENS } from '../constants'
 import { UserRepository } from '../infrastructure/user.repository'
 import { CryptoService } from 'src/core/application/crypto.service'
 import { EventEmitter2 } from '@nestjs/event-emitter'
@@ -22,6 +21,7 @@ import {
   ItemListOutputDto,
   ItemOutputDto,
 } from 'src/core/domain/dto/base-response.dto'
+import { USER_PROVIDER_TOKENS } from '../constants'
 
 const USER_CREATED_EVENT = `${ENTITY_NAMES.USERS}.${ENTITY_ACTIONS.CREATED}`
 const USER_UPDATED_EVENT = `${ENTITY_NAMES.USERS}.${ENTITY_ACTIONS.UPDATED}`
@@ -64,8 +64,8 @@ export class UsersService {
   async findAll(
     userQueryInputDto: UserQueryInputDto,
   ): Promise<ItemListOutputDto<UserOutputDto>> {
-    const { pagination, order, ...filters } =
-      this.queryExtractorService.extract(userQueryInputDto as any)
+    const { pagination, order, filters } =
+      this.queryExtractorService.extract(userQueryInputDto)
     const query = this.queryAdapter
       .addPagination(pagination.skip, pagination.take)
       .addOrderAndSort(order.orderBy, order.sortBy)

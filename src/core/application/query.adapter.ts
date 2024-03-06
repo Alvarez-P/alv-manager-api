@@ -7,13 +7,13 @@ import {
   FindOptionsRelations,
   FindOptionsSelect,
   FindOptionsWhere,
-  ILike,
   In,
   LessThan,
   LessThanOrEqual,
   MoreThan,
   MoreThanOrEqual,
   Not,
+  ILike,
 } from 'typeorm'
 import {
   EF,
@@ -67,6 +67,13 @@ export class QueryORMAdapter<E extends BaseEntity> {
       }
       if (isObject(value)) {
         const deepFilters = Object.entries(value)
+        if (deepFilters.length === 1) {
+          const [deepKey, deepValue] = deepFilters[0]
+          if (!deepKey.startsWith('$')) return
+          const parser = this.filterMap[deepKey]
+          if (parser) parsedFilters[key] = parser(deepValue)
+          return
+        }
         const filter = []
         deepFilters.forEach(([deepKey, deepValue]) => {
           if (!deepKey.startsWith('$')) return

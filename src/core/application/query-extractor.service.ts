@@ -6,6 +6,7 @@ import {
   QueryPagination,
   SortBy,
 } from '../domain/types/base-query.types'
+import { EntityQueryFilters } from '../domain/types/entity-filters.types'
 
 @Injectable()
 export class QueryExtractorService<E extends BaseEntity> {
@@ -34,14 +35,18 @@ export class QueryExtractorService<E extends BaseEntity> {
   }
 
   extract<Q extends BaseQuery<E>>(
-    query: Q,
-  ): { pagination: Required<QueryPagination>; order: Required<QueryOrder<E>> } {
-    const { orderBy, sortBy, take, skip } = query
+    query: Q & EntityQueryFilters<E>,
+  ): {
+    pagination: Required<QueryPagination>
+    order: Required<QueryOrder<E>>
+    filters: EntityQueryFilters<E>
+  } {
+    const { orderBy, sortBy, take, skip, ...filters } = query
     const pagination = { take: take ?? this.take, skip: skip ?? this.skip }
     const order = {
       orderBy: orderBy ?? this.orderBy,
       sortBy: sortBy ?? this.sortBy,
     }
-    return { pagination, order }
+    return { pagination, order, filters: filters as EntityQueryFilters<E> }
   }
 }

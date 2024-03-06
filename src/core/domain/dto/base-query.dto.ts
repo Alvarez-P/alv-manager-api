@@ -2,7 +2,14 @@ import { createZodDto } from 'nestjs-zod/dto'
 import { z } from 'nestjs-zod/z'
 
 export const BaseQueryInputSchema = z.object({
-  sortBy: z.enum(['asc', 'desc', 'ASC', 'DESC']).optional().describe('SortBy'),
+  sortBy: z
+    .enum(['asc', 'desc', 'ASC', 'DESC'], {
+      errorMap: () => ({
+        message: 'La orientación del ordenamiento es inválida.',
+      }),
+    })
+    .optional()
+    .describe('SortBy'),
   skip: z.coerce
     .number()
     .int({

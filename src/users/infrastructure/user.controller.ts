@@ -38,7 +38,7 @@ export class UsersController {
   async create(
     @Body() createUserDto: CreateUserInputDto,
   ): Promise<GenericOutputDto<UserOutputDto>> {
-    const data = await this.usersService.create(createUserDto, '')
+    const data = await this.usersService.create(createUserDto, null)
     return { message: 'Usuario creado correctamente.', data }
   }
 
