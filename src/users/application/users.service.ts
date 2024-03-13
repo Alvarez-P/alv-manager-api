@@ -1,10 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, StreamableFile } from '@nestjs/common'
 import { CreateUserInputDto } from '../domain/dto/create-user-input.dto'
 import { UpdateUserInputDto } from '../domain/dto/update-user-input.dto'
 import { UserRepository } from '../infrastructure/user.repository'
 import { CryptoService } from 'src/core/application/crypto.service'
 import { EventEmitter2 } from '@nestjs/event-emitter'
-import { ENTITY_ACTIONS, ENTITY_NAMES } from 'src/core/constants'
 import {
   EmailAlreadyUsedException,
   UserIsDisabledException,
@@ -21,11 +20,18 @@ import {
   ItemListOutputDto,
   ItemOutputDto,
 } from 'src/core/domain/dto/base-response.dto'
-import { USER_PROVIDER_TOKENS } from '../constants'
-
-const USER_CREATED_EVENT = `${ENTITY_NAMES.USERS}.${ENTITY_ACTIONS.CREATED}`
-const USER_UPDATED_EVENT = `${ENTITY_NAMES.USERS}.${ENTITY_ACTIONS.UPDATED}`
-const USER_DELETED_EVENT = `${ENTITY_NAMES.USERS}.${ENTITY_ACTIONS.DELETED}`
+import {
+  USER_CREATED_EVENT,
+  USER_DELETED_EVENT,
+  USER_FILE_NAMES,
+  USER_PROVIDER_TOKENS,
+  USER_UPDATED_EVENT,
+  USER_UPDATED_PROFILE_PICTURE_EVENT,
+  getUserFilesPath,
+} from '../constants'
+import { FileManagerService } from 'src/core/application/file-manager.service'
+import * as path from 'path'
+import { createReadStream } from 'fs'
 
 @Injectable()
 export class UsersService {
@@ -36,6 +42,7 @@ export class UsersService {
     private readonly eventEmitter: EventEmitter2,
     private readonly queryAdapter: QueryORMAdapter<User>,
     private readonly queryExtractorService: QueryExtractorService<User>,
+    private readonly fileManagerService: FileManagerService,
   ) {}
 
   async create(
@@ -51,13 +58,9 @@ export class UsersService {
     if (!emailIsUnique) throw new EmailAlreadyUsedException()
     if (!usernameIsUnique) throw new UsernameAlreadyUsedException()
     const hashedPwd = this.cryptoService.hash(createUserDto.password)
-    const newUser = {
-      ...createUserDto,
-      password: hashedPwd,
-      createdBy,
-    }
+    const newUser = { ...createUserDto, password: hashedPwd, createdBy }
     const saved = await this.userRepository.save(newUser)
-    this.eventEmitter.emit(USER_CREATED_EVENT, { data: saved })
+    this.eventEmitter.emit(USER_CREATED_EVENT, { ...saved })
     return plainToInstance(UserOutputDto, saved)
   }
 
@@ -107,13 +110,52 @@ export class UsersService {
     if (!userExists.isActive) throw new UserIsDisabledException()
     const updateUser = { ...updateUserDto, updatedBy }
     const updated = await this.userRepository.updateOne(id, updateUser)
-    this.eventEmitter.emit(USER_UPDATED_EVENT, { data: updated })
+    this.eventEmitter.emit(USER_UPDATED_EVENT, { ...updated })
     return plainToInstance(UserOutputDto, updated)
   }
 
   async deleteOne(id: string, deletedBy: string) {
     await this.userRepository.updateOne(id, { isActive: false })
     await this.userRepository.deleteOne(id, deletedBy)
-    this.eventEmitter.emit(USER_DELETED_EVENT, { data: id })
+    this.eventEmitter.emit(USER_DELETED_EVENT, { id })
+  }
+
+  async uploadProfilePic(id: string, file: Express.Multer.File) {
+    const user = await this.userRepository.getOne({ where: { id } })
+    if (!user) throw new UserNotFoundException()
+    if (
+      user.profilePicture &&
+      this.fileManagerService.pathExists(user.profilePicture)
+    )
+      await this.fileManagerService.removeFile(user.profilePicture)
+    const fileExtension = file.originalname.split('.').pop()
+    const userFilesPath = getUserFilesPath(id)
+    const filepath = path.join(
+      userFilesPath,
+      `${USER_FILE_NAMES.PROFILE_PICTURE}.${fileExtension}`,
+    )
+    await this.fileManagerService.createDirectory(userFilesPath)
+    await this.fileManagerService.saveFile(filepath, file.buffer)
+    const updated = await this.userRepository.updateOne(id, {
+      profilePicture: filepath,
+    })
+    this.eventEmitter.emit(USER_UPDATED_PROFILE_PICTURE_EVENT, updated)
+    return plainToInstance(UserOutputDto, updated)
+  }
+
+  async getProfilePic(
+    id: string,
+  ): Promise<{ file: StreamableFile; extension: string } | null> {
+    const user = await this.userRepository.getOne({ where: { id } })
+    if (!user) throw new UserNotFoundException()
+    if (
+      !user.profilePicture ||
+      !this.fileManagerService.pathExists(user.profilePicture)
+    )
+      return null
+    return {
+      file: new StreamableFile(createReadStream(user.profilePicture)),
+      extension: user.profilePicture.split('.').pop(),
+    }
   }
 }

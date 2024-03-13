@@ -7,4 +7,5 @@ export class User extends BaseEntity {
   email: string
   password: string
   isActive: boolean
+  profilePicture?: string
 }

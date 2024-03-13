@@ -3,6 +3,8 @@ import { AppModule } from './app.module'
 import { ZodValidationPipe, patchNestJsSwagger } from 'nestjs-zod'
 import helmet from 'helmet'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { EnvService } from './core/application/env.service'
+import { Logger } from '@nestjs/common'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -20,6 +22,10 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup('api/doc', app, document)
 
-  await app.listen(AppModule.SERVER_PORT)
+  const envService = app.get(EnvService)
+  const SERVER_PORT = envService.get('SERVER_PORT')
+  await app.listen(SERVER_PORT, () => {
+    Logger.log(`Server running on port ${SERVER_PORT}`)
+  })
 }
 bootstrap()

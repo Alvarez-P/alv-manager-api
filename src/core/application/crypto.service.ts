@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { scryptSync, randomUUID } from 'crypto'
+import { EnvService } from './env.service'
 
 @Injectable()
 export class CryptoService {
   private pwd: string
-  constructor(private readonly configService: ConfigService) {
-    this.pwd = this.configService.get<string>('SERVER_CRYPTO_PWD')
+  constructor(private readonly envService: EnvService) {
+    this.pwd = this.envService.get('SERVER_CRYPTO_PWD')
   }
   generateUUID() {
     return randomUUID()

@@ -14,6 +14,8 @@ export class UserOutputDto extends User {
   updatedBy: string
 
   @Exclude()
+  profilePicture: string | null
+  @Exclude()
   password: string
   @Exclude()
   deletedAt: Date | null

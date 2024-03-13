@@ -39,6 +39,11 @@ export const UserSchema = new EntitySchema<User>({
       type: Boolean,
       default: false,
     },
+    profilePicture: {
+      type: String,
+      nullable: true,
+      default: null,
+    },
     ...BaseSchema,
   },
   relations: {},
